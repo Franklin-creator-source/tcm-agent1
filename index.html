@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>中医知识问答</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC",sans-serif;background:#F5F0EB;color:#2C1810;height:100vh;display:flex;flex-direction:column}
+/* 顶部栏 */
+.header{background:linear-gradient(135deg,#8B4513,#A0522D);color:#fff;padding:16px 16px 12px;text-align:center;flex-shrink:0}
+.header h1{font-size:18px;font-weight:700;letter-spacing:1px}
+.header .sub{font-size:12px;opacity:.8;margin-top:3px}
+/* 免责声明 */
+.disclaimer{background:#FFF3E0;border-left:3px solid #C0392B;margin:8px 12px 0;padding:8px 12px;border-radius:6px;font-size:11px;color:#8D3A2A;line-height:1.5;flex-shrink:0}
+/* 聊天区域 */
+.chat-area{flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:12px;-webkit-overflow-scrolling:touch}
+.msg{max-width:88%;padding:12px 14px;border-radius:14px;font-size:14px;line-height:1.7;word-break:break-word;animation:fadeIn .25s}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.msg.user{background:#8B4513;color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+.msg.bot{background:#fff;color:#2C1810;align-self:flex-start;border-bottom-left-radius:4px;border:1px solid #E8D5C4}
+.msg.bot .sources{font-size:11px;color:#8B6F5C;margin-top:8px;padding-top:8px;border-top:1px solid #E8D5C4}
+.msg.bot .sources .tag{display:inline-block;background:#F5EDE5;padding:2px 8px;border-radius:10px;margin:2px 3px;font-size:10px;color:#6B4C3B}
+.msg.bot .disclaimer-text{font-size:11px;color:#C0392B;margin-top:8px;padding-top:8px;border-top:1px solid #F5EDE5}
+.thinking{background:#fff;color:#8B6F5C;align-self:flex-start;border-bottom-left-radius:4px;border:1px solid #E8D5C4;padding:14px 18px;display:none}
+.thinking .dots{display:inline-flex;gap:4px}
+.thinking .dots span{width:6px;height:6px;background:#C4A882;border-radius:50%;animation:bounce 1.2s infinite}
+.thinking .dots span:nth-child(2){animation-delay:.2s}
+.thinking .dots span:nth-child(3){animation-delay:.4s}
+@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
+/* 快捷问题 */
+.quick-row{display:flex;gap:6px;padding:6px 16px 0;overflow-x:auto;flex-shrink:0;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.quick-row::-webkit-scrollbar{display:none}
+.quick-btn{flex-shrink:0;background:#fff;border:1px solid #E8D5C4;border-radius:16px;padding:6px 14px;font-size:12px;color:#6B4C3B;cursor:pointer;white-space:nowrap;transition:all .15s}
+.quick-btn:active{background:#8B4513;color:#fff;border-color:#8B4513}
+/* 输入区 */
+.input-area{display:flex;gap:8px;padding:10px 12px 14px;background:#fff;border-top:1px solid #E8D5C4;flex-shrink:0}
+.input-area input{flex:1;padding:10px 14px;border:1.5px solid #E8D5C4;border-radius:22px;font-size:14px;outline:none;background:#F9F6F2;color:#2C1810}
+.input-area input:focus{border-color:#8B4513;background:#fff}
+.input-area input::placeholder{color:#B8A090}
+.input-area button{width:40px;height:40px;border:none;border-radius:50%;background:#8B4513;color:#fff;font-size:18px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.input-area button:active{background:#A0522D}
+.input-area button:disabled{background:#C4A882}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🌿 中医知识问答</h1>
+  <div class="sub">AI 辅助回答 · 仅供学术交流</div>
+</div>
+
+<div class="disclaimer">⚠️ 所有回答仅供学术交流，不构成医疗建议。身体不适请及时到医院就医。</div>
+
+<div class="chat-area" id="chatArea">
+  <div class="msg bot">
+    👋 你好！我是中医知识 AI 问答助手。
+    请问你想了解什么？<br><br>
+  </div>
+</div>
+
+<div class="quick-row" id="quickRow">
+  <div class="quick-btn" data-q="伤寒论">📖 伤寒论</div>
+  <div class="quick-btn" data-q="六经辨证">📖 六经辨证</div>
+  <div class="quick-btn" data-q="李可">👨‍⚕️ 李可</div>
+  <div class="quick-btn" data-q="郑钦安">🔥 郑钦安</div>
+  <div class="quick-btn" data-q="张景岳">📚 张景岳</div>
+  <div class="quick-btn" data-q="祝味菊">🌿 祝味菊</div>
+</div>
+
+<div class="input-area">
+  <input type="text" id="input" placeholder="输入中医问题..." autocomplete="off">
+  <button id="sendBtn" disabled>➤</button>
+</div>
+
+<script>
+const chatArea = document.getElementById("chatArea");
+const input = document.getElementById("input");
+const sendBtn = document.getElementById("sendBtn");
+const quickRow = document.getElementById("quickRow");
+
+let isAsking = false;
+
+// 添加消息
+function addMessage(text, type, sources) {
+  const div = document.createElement("div");
+  div.className = `msg ${type}`;
+  let html = text.replace(/\n/g, "<br>").replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+  if (type === "bot") {
+    // 将出处加在末尾
+    let srcHtml = "";
+    if (sources && sources.length > 0) {
+      const tags = sources.filter(s => s.title).slice(0, 5).map(s => `<span class="tag">📄 ${s.title}</span>`).join("");
+      if (tags) srcHtml = `<div class="sources">相关文献：${tags}</div>`;
+    }
+    html += srcHtml;
+    if (!text.includes("⚠️")) {
+      html += `<div class="disclaimer-text">⚠️ 本回复仅供学术交流，不构成医疗建议，身体不适请及时就医。</div>`;
+    }
+  }
+  div.innerHTML = html;
+  chatArea.appendChild(div);
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+// 显示思考中
+function showThinking() {
+  const d = document.createElement("div");
+  d.className = "thinking";
+  d.id = "thinkingMsg";
+  d.innerHTML = `<span style="font-size:13px">AI 思考中</span> <span class="dots"><span></span><span></span><span></span></span>`;
+  chatArea.appendChild(d);
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function hideThinking() {
+  const t = document.getElementById("thinkingMsg");
+  if (t) t.remove();
+}
+
+// 发送问题
+async function ask(question) {
+  if (!question.trim() || isAsking) return;
+  isAsking = true;
+  sendBtn.disabled = true;
+  input.disabled = true;
+
+  addMessage(question, "user");
+  showThinking();
+
+  try {
+    const resp = await fetch("/api/chat", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ question: question.trim() })
+    });
+    const data = await resp.json();
+    hideThinking();
+    addMessage(data.answer || data.error || "暂无回答", "bot", data.sources || []);
+  } catch(e) {
+    hideThinking();
+    addMessage("网络错误，请稍后重试", "bot");
+  }
+
+  isAsking = false;
+  sendBtn.disabled = false;
+  input.disabled = false;
+  input.focus();
+}
+
+// 事件绑定
+sendBtn.addEventListener("click", () => { ask(input.value); input.value = ""; });
+input.addEventListener("keydown", e => {
+  if (e.key === "Enter") { ask(input.value); input.value = ""; }
+});
+input.addEventListener("input", () => {
+  sendBtn.disabled = !input.value.trim() || isAsking;
+});
+
+quickRow.addEventListener("click", e => {
+  const btn = e.target.closest(".quick-btn");
+  if (btn) ask(btn.dataset.q);
+});
+</script>
+</body>
+</html>
