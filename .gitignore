@@ -1,0 +1,5 @@
+start.sh
+tcm-agent-koyeb.zip
+server.py
+__pycache__/
+*.pyc

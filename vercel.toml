@@ -1,0 +1,9 @@
+# Vercel 配置
+[build]
+  command = "pip install -r requirements.txt"
+
+# 根路径交给 Flask 处理
+[[redirects]]
+  from = "/"
+  to = "/api/"
+  status = 200

@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>中医知识问答 | TCM Knowledge Q&A</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC",sans-serif;background:#F5F0EB;color:#2C1810;height:100vh;display:flex;flex-direction:column}
+/* 顶部栏 */
+.header{background:linear-gradient(135deg,#8B4513,#A0522D);color:#fff;padding:16px 16px 12px;text-align:center;flex-shrink:0;position:relative}
+.header h1{font-size:18px;font-weight:700;letter-spacing:1px}
+.header .sub{font-size:12px;opacity:.8;margin-top:3px}
+/* 语言切换按钮 */
+.lang-btn{position:absolute;top:14px;right:12px;border:none;background:rgba(255,255,255,.2);color:#fff;font-size:12px;padding:5px 14px;border-radius:16px;cursor:pointer;transition:all .15s;font-weight:600;backdrop-filter:blur(4px)}
+.lang-btn:active{background:rgba(255,255,255,.4)}
+/* 清空对话按钮 */
+.clear-btn{position:absolute;top:14px;left:12px;border:none;background:rgba(255,255,255,.2);color:#fff;font-size:11px;padding:5px 12px;border-radius:16px;cursor:pointer;transition:all .15s;backdrop-filter:blur(4px)}
+.clear-btn:active{background:rgba(255,255,255,.4)}
+.clear-btn:disabled{opacity:.4}
+/* 免责声明 */
+.disclaimer{background:#FFF3E0;border-left:3px solid #C0392B;margin:8px 12px 0;padding:8px 12px;border-radius:6px;font-size:11px;color:#8D3A2A;line-height:1.5;flex-shrink:0}
+/* 聊天区域 */
+.chat-area{flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:12px;-webkit-overflow-scrolling:touch}
+.msg{max-width:88%;padding:12px 14px;border-radius:14px;font-size:14px;line-height:1.7;word-break:break-word;animation:fadeIn .25s}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.msg.user{background:#8B4513;color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+.msg.bot{background:#fff;color:#2C1810;align-self:flex-start;border-bottom-left-radius:4px;border:1px solid #E8D5C4}
+.msg.bot .sources{font-size:11px;color:#8B6F5C;margin-top:8px;padding-top:8px;border-top:1px solid #E8D5C4}
+.msg.bot .sources .tag{display:inline-block;background:#F5EDE5;padding:2px 8px;border-radius:10px;margin:2px 3px;font-size:10px;color:#6B4C3B}
+.msg.bot .disclaimer-text{font-size:11px;color:#C0392B;margin-top:8px;padding-top:8px;border-top:1px solid #F5EDE5}
+.thinking{background:#fff;color:#8B6F5C;align-self:flex-start;border-bottom-left-radius:4px;border:1px solid #E8D5C4;padding:14px 18px;display:none}
+.thinking .dots{display:inline-flex;gap:4px}
+.thinking .dots span{width:6px;height:6px;background:#C4A882;border-radius:50%;animation:bounce 1.2s infinite}
+.thinking .dots span:nth-child(2){animation-delay:.2s}
+.thinking .dots span:nth-child(3){animation-delay:.4s}
+@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
+/* 快捷问题 */
+.quick-row{display:flex;gap:6px;padding:6px 16px 0;overflow-x:auto;flex-shrink:0;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.quick-row::-webkit-scrollbar{display:none}
+.quick-btn{flex-shrink:0;background:#fff;border:1px solid #E8D5C4;border-radius:16px;padding:6px 14px;font-size:12px;color:#6B4C3B;cursor:pointer;white-space:nowrap;transition:all .15s}
+.quick-btn:active{background:#8B4513;color:#fff;border-color:#8B4513}
+/* 输入区 */
+.input-area{display:flex;gap:8px;padding:10px 12px 14px;background:#fff;border-top:1px solid #E8D5C4;flex-shrink:0}
+.input-area input{flex:1;padding:10px 14px;border:1.5px solid #E8D5C4;border-radius:22px;font-size:14px;outline:none;background:#F9F6F2;color:#2C1810}
+.input-area input:focus{border-color:#8B4513;background:#fff}
+.input-area input::placeholder{color:#B8A090}
+.input-area button{width:40px;height:40px;border:none;border-radius:50%;background:#8B4513;color:#fff;font-size:18px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.input-area button:active{background:#A0522D}
+.input-area button:disabled{background:#C4A882}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <button class="clear-btn" id="clearBtn" onclick="clearChat()">🗑️ 清空</button>
+  <button class="lang-btn" id="langBtn" onclick="toggleLang()">🌐 EN</button>
+  <h1 id="title">🌿 中医知识问答</h1>
+  <div class="sub" id="subtitle">AI 辅助回答 · 仅供学术交流</div>
+</div>
+
+<div class="disclaimer" id="disclaimer">⚠️ 所有回答仅供学术交流，不构成医疗建议。身体不适请及时到医院就医。</div>
+
+<div class="chat-area" id="chatArea">
+  <div class="msg bot">
+    👋 你好！我是中医知识 AI 问答助手。请问你想了解什么？<br><br>
+  </div>
+</div>
+
+<div class="quick-row" id="quickRow">
+  <div class="quick-btn" data-q-zh="伤寒论" data-q-en="Shang Han Lun (Treatise on Cold Damage)">📖 <span id="q1">伤寒论</span></div>
+  <div class="quick-btn" data-q-zh="六经辨证" data-q-en="Six-Meridian Differentiation">📖 <span id="q2">六经辨证</span></div>
+  <div class="quick-btn" data-q-zh="李可" data-q-en="Li Ke (TCM Master)">👨‍⚕️ <span id="q3">李可</span></div>
+  <div class="quick-btn" data-q-zh="郑钦安" data-q-en="Zheng Qin'an (Fire Spirit School)">🔥 <span id="q4">郑钦安</span></div>
+  <div class="quick-btn" data-q-zh="张景岳" data-q-en="Zhang Jingyue (Ming Dynasty TCM)">📚 <span id="q5">张景岳</span></div>
+  <div class="quick-btn" data-q-zh="祝味菊" data-q-en="Zhu Weiju">🌿 <span id="q6">祝味菊</span></div>
+</div>
+
+<div class="input-area">
+  <input type="text" id="input" placeholder="输入中医问题..." autocomplete="off">
+  <button id="sendBtn" disabled>➤</button>
+</div>
+
+<script>
+const chatArea = document.getElementById("chatArea");
+const input = document.getElementById("input");
+const sendBtn = document.getElementById("sendBtn");
+const quickRow = document.getElementById("quickRow");
+
+let isAsking = false;
+let currentLang = "zh";
+let chatHistory = [];  // 对话记忆：[{role, content}, ...]
+
+// 双语文案
+const i18n = {
+  zh: {
+    title: "🌿 中医知识问答",
+    subtitle: "AI 辅助回答 · 仅供学术交流",
+    disclaimer: "⚠️ 所有回答仅供学术交流，不构成医疗建议。身体不适请及时到医院就医。",
+    welcome: "👋 你好！我是中医知识 AI 问答助手。请问你想了解什么？<br><br>",
+    placeholder: "输入中医问题...",
+    thinking: "AI 思考中",
+    networkError: "网络错误，请稍后重试",
+    sources: "相关文献",
+    disclaimerBot: "⚠️ 本回复仅供学术交流，不构成医疗建议，身体不适请及时就医。",
+    questions: ["伤寒论", "六经辨证", "李可", "郑钦安", "张景岳", "祝味菊"],
+    langBtn: "🌐 EN",
+    clearBtn: "🗑️ 清空"
+  },
+  en: {
+    title: "🌿 TCM Knowledge Q&A",
+    subtitle: "AI-Assisted Answers · For Academic Exchange Only",
+    disclaimer: "⚠️ All answers are for academic exchange only and do not constitute medical advice. If you feel unwell, please seek medical attention promptly.",
+    welcome: "👋 Hello! I am a TCM (Traditional Chinese Medicine) Knowledge AI Assistant. What would you like to know?<br><br>",
+    placeholder: "Ask a TCM question...",
+    thinking: "AI is thinking",
+    networkError: "Network error, please try again later",
+    sources: "References",
+    disclaimerBot: "⚠️ This response is for academic exchange only, not medical advice. Please consult a doctor if unwell.",
+    questions: ["Shang Han Lun", "Six-Meridian Diff.", "Li Ke", "Zheng Qin'an", "Zhang Jingyue", "Zhu Weiju"],
+    langBtn: "🌐 中文",
+    clearBtn: "🗑️ Clear"
+  }
+};
+
+// 单按钮切换语言
+function toggleLang() {
+  currentLang = currentLang === "zh" ? "en" : "zh";
+  applyLang();
+  // 清空聊天记录和历史对话，显示欢迎语
+  chatHistory = [];
+  chatArea.innerHTML = "";
+  addMessage(i18n[currentLang].welcome, "bot");
+}
+
+function applyLang() {
+  const t = i18n[currentLang];
+  document.getElementById("title").textContent = t.title;
+  document.getElementById("subtitle").textContent = t.subtitle;
+  document.getElementById("disclaimer").textContent = t.disclaimer;
+  document.getElementById("langBtn").textContent = t.langBtn;
+  document.getElementById("clearBtn").textContent = t.clearBtn;
+  input.placeholder = t.placeholder;
+
+  // 更新快捷问题文字
+  t.questions.forEach((q, i) => {
+    const el = document.getElementById("q" + (i + 1));
+    if (el) el.textContent = q;
+  });
+}
+
+// 保留 switchLang 供外部调用
+function switchLang(lang) {
+  currentLang = lang;
+  applyLang();
+}
+
+// 清空对话
+function clearChat() {
+  chatHistory = [];
+  chatArea.innerHTML = "";
+  addMessage(i18n[currentLang].welcome, "bot");
+}
+
+// 添加消息
+function addMessage(text, type, sources) {
+  const div = document.createElement("div");
+  div.className = `msg ${type}`;
+  let html = text.replace(/\n/g, "<br>").replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+  if (type === "bot") {
+    let srcHtml = "";
+    if (sources && sources.length > 0) {
+      const tags = sources.filter(s => s.title).slice(0, 5).map(s => `<span class="tag">📄 ${s.title}</span>`).join("");
+      if (tags) srcHtml = `<div class="sources">${i18n[currentLang].sources}：${tags}</div>`;
+    }
+    html += srcHtml;
+    if (!text.includes("⚠️")) {
+      html += `<div class="disclaimer-text">${i18n[currentLang].disclaimerBot}</div>`;
+    }
+  }
+  div.innerHTML = html;
+  chatArea.appendChild(div);
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+// 显示思考中
+function showThinking() {
+  const d = document.createElement("div");
+  d.className = "thinking";
+  d.id = "thinkingMsg";
+  d.innerHTML = `<span style="font-size:13px">${i18n[currentLang].thinking}</span> <span class="dots"><span></span><span></span><span></span></span>`;
+  chatArea.appendChild(d);
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function hideThinking() {
+  const t = document.getElementById("thinkingMsg");
+  if (t) t.remove();
+}
+
+// 发送问题
+async function ask(question) {
+  if (!question.trim() || isAsking) return;
+  isAsking = true;
+  sendBtn.disabled = true;
+  input.disabled = true;
+
+  addMessage(question, "user");
+  showThinking();
+
+  try {
+    const resp = await fetch("/api/chat", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        question: question.trim(),
+        lang: currentLang,
+        history: chatHistory  // 传历史对话
+      })
+    });
+    const data = await resp.json();
+    hideThinking();
+    const answer = data.answer || data.error || "暂无回答";
+    addMessage(answer, "bot", data.sources || []);
+
+    // 记录到历史对话
+    chatHistory.push({ role: "user", content: question.trim() });
+    chatHistory.push({ role: "assistant", content: answer });
+    // 最多保留 20 条（约 10 轮对话）
+    if (chatHistory.length > 20) {
+      chatHistory = chatHistory.slice(-20);
+    }
+  } catch(e) {
+    hideThinking();
+    addMessage(i18n[currentLang].networkError, "bot");
+  }
+
+  isAsking = false;
+  sendBtn.disabled = false;
+  input.disabled = false;
+  input.focus();
+}
+
+// 事件绑定
+sendBtn.addEventListener("click", () => { ask(input.value); input.value = ""; });
+input.addEventListener("keydown", e => {
+  if (e.key === "Enter") { ask(input.value); input.value = ""; }
+});
+input.addEventListener("input", () => {
+  sendBtn.disabled = !input.value.trim() || isAsking;
+});
+
+quickRow.addEventListener("click", e => {
+  const btn = e.target.closest(".quick-btn");
+  if (btn) {
+    const q = currentLang === "zh" ? btn.dataset.qZh : btn.dataset.qEn;
+    ask(q);
+  }
+});
+</script>
+</body>
+</html>
