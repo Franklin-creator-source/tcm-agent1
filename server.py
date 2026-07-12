@@ -189,6 +189,30 @@ class Handler(BaseHTTPRequestHandler):
 
 请优先参考吴雄志、胡希恕、郑钦安、祝味菊、张景岳的著作进行分析，兼顾六经八纲，不用注明出处。"""
 
+
+  # 构建 messages: system + 历史对话 + 当前问题
+    messages = [{"role": "system", "content": SYSTEM_PROMPT_ZH}]
+
+    # 添加历史对话（最多保留最近 20 条消息 ≈ 10 轮）
+    for msg in history[-20:]:
+        role = msg.get("role", "")
+        content = msg.get("content", "")
+        if role in ("user", "assistant") and content:
+            messages.append({"role": role, "content": content})
+
+    messages.append({"role": "user", "content": user_prompt})
+
+    answer = call_deepseek(messages)
+
+    # 英文模式：将中文回答翻译成英文
+    if answer and lang == "en" and DEEPSEEK_API_KEY:
+        answer = translate_to_english(answer)
+
+    if answer is None:
+        if kb_items:
+            docs = "\n".join(f"- 《{i.get('title','').replace('.pdf','')}》" for i in kb_items[:3])
+            if lang == "en":
+                answer = f"""📚 **About: "{question}"**       
         answer = call_deepseek([
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt}
