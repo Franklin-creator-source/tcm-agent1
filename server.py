@@ -133,6 +133,31 @@ class Handler(BaseHTTPRequestHandler):
         if not question:
             return self._send_json({"error": "请输入问题"}, 400)
 
+
+            {"role": "system", "content": "You are a professional translator specializing in Traditional Chinese Medicine (TCM). Translate the following Chinese text into English. Keep all proper names of books and persons in Pinyin, followed by English translation in parentheses. For TCM terms, use Pinyin (English) format, e.g. 'Fuzi (Aconite)', 'Liu Jing (Six Meridians)'. Output ONLY the translation, nothing else."},
+            {"role": "user", "content": f"Translate the following into English:\n\n{text}"}
+        ],
+        "temperature": 0.3,
+        "max_tokens": 2500
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        "https://api.deepseek.com/chat/completions",
+        data=data,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {DEEPSEEK_API_KEY}"
+        }
+    )
+    try:
+        resp = urllib.request.urlopen(req, timeout=60)
+        result = json.loads(resp.read())
+        return result["choices"][0]["message"]["content"]
+    except:
+        return text
+
+
+        
         # 1. 搜索知识库
         ima_resp = call_ima_api("openapi/wiki/v1/search_knowledge", {
             "query": question, "knowledge_base_id": KB_ID, "cursor": ""
