@@ -153,6 +153,11 @@ class Handler(BaseHTTPRequestHandler):
         # 2. 调用 DeepSeek
         system_prompt = """你是一位精通中医经典文献的学术顾问。你的核心参考著作如下：
 
+ # 3. 构建 messages（含历史对话记忆）
+    user_prompt = f"""知识库中检索到的相关资料：
+{context}
+
+
 【核心医家】
 - 吴雄志：《吴述重订伤寒杂病论》
 - 胡希恕：《胡希恕温病条辨讲义》《经方医案（黄煌）》
