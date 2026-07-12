@@ -130,6 +130,10 @@ def chat():
     user_prompt = f"""知识库中检索到的相关资料：
 {context}
 
+# 3. 构建 messages（含历史对话记忆）
+    user_prompt = f"""知识库中检索到的相关资料：
+{context}
+
 用户问题：{question}
 
 请优先参考吴雄志、胡希恕、郑钦安、祝味菊、张景岳的著作进行分析，兼顾六经八纲，不用注明出处。"""
