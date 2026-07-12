@@ -68,6 +68,29 @@ def call_deepseek(messages: list) -> str:
     except Exception as e:
         return f"【调用 DeepSeek 出错】{str(e)}"
 
+            {"role": "system", "content": "You are a professional translator specializing in Traditional Chinese Medicine (TCM). Translate the following Chinese text into English. Keep all proper names of books and persons in Pinyin, followed by English translation in parentheses. For TCM terms, use Pinyin (English) format, e.g. 'Fuzi (Aconite)', 'Liu Jing (Six Meridians)'. Output ONLY the translation, nothing else."},
+            {"role": "user", "content": f"Translate the following into English:\n\n{text}"}
+        ],
+        "temperature": 0.3,
+        "max_tokens": 2500
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        "https://api.deepseek.com/chat/completions",
+        data=data,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {DEEPSEEK_API_KEY}"
+        }
+    )
+    try:
+        resp = urllib.request.urlopen(req, timeout=60)
+        result = json.loads(resp.read())
+        return result["choices"][0]["message"]["content"]
+    except:
+        return text
+
+
 
 SYSTEM_PROMPT = """你是一位精通中医经典文献的学术顾问。你的核心参考著作如下：
 
