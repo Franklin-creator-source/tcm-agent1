@@ -68,12 +68,43 @@ def call_deepseek(messages: list) -> str:
     except Exception as e:
         return f"【调用 DeepSeek 出错】{str(e)}"
 
-            {"role": "system", "content": "You are a professional translator specializing in Traditional Chinese Medicine (TCM). Translate the following Chinese text into English. Keep all proper names of books and persons in Pinyin, followed by English translation in parentheses. For TCM terms, use Pinyin (English) format, e.g. 'Fuzi (Aconite)', 'Liu Jing (Six Meridians)'. Output ONLY the translation, nothing else."},
-            {"role": "user", "content": f"Translate the following into English:\n\n{text}"}
+            
+def translate_to_english(text):
+    """将中文文本翻译为英文"""
+    if not DEEPSEEK_API_KEY:
+        return text
+    
+    data = json.dumps({
+        "model": "deepseek-chat",
+        "messages": [
+            {
+                "role": "system",
+                "content": "You are a professional translator specializing in Traditional Chinese Medicine (TCM). Translate the following Chinese text into English. Keep all proper names of books and persons in Pinyin, followed by English translation in parentheses. For TCM terms, use Pinyin (English) format, e.g. 'Fuzi (Aconite)', 'Liu Jing (Six Meridians)'. Output ONLY the translation, nothing else."
+            },
+            {
+                "role": "user",
+                "content": f"Translate the following into English:\n\n{text}"
+            }
         ],
         "temperature": 0.3,
         "max_tokens": 2500
     }).encode("utf-8")
+
+    req = urllib.request.Request(
+        "https://api.deepseek.com/chat/completions",
+        data=data,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {DEEPSEEK_API_KEY}"
+        }
+    )
+    try:
+        resp = urllib.request.urlopen(req, timeout=60)
+        result = json.loads(resp.read())
+        return result["choices"]["message"]["content"]
+    except Exception as e:
+        return f"【翻译出错】{str(e)}"
+ 
 
     req = urllib.request.Request(
         "https://api.deepseek.com/chat/completions",
