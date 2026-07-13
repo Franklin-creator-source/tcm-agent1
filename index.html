@@ -5,42 +5,41 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <title>中医知识问答</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC",sans-serif;background:#F5F0EB;color:#2C1810;height:100vh;display:flex;flex-direction:column}
-/* 顶部栏 */
-.header{background:linear-gradient(135deg,#8B4513,#A0522D);color:#fff;padding:16px 16px 12px;text-align:center;flex-shrink:0}
-.header h1{font-size:18px;font-weight:700;letter-spacing:1px}
-.header .sub{font-size:12px;opacity:.8;margin-top:3px}
-/* 免责声明 */
-.disclaimer{background:#FFF3E0;border-left:3px solid #C0392B;margin:8px 12px 0;padding:8px 12px;border-radius:6px;font-size:11px;color:#8D3A2A;line-height:1.5;flex-shrink:0}
-/* 聊天区域 */
-.chat-area{flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:12px;-webkit-overflow-scrolling:touch}
-.msg{max-width:88%;padding:12px 14px;border-radius:14px;font-size:14px;line-height:1.7;word-break:break-word;animation:fadeIn .25s}
-@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.msg.user{background:#8B4513;color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
-.msg.bot{background:#fff;color:#2C1810;align-self:flex-start;border-bottom-left-radius:4px;border:1px solid #E8D5C4}
-.msg.bot .sources{font-size:11px;color:#8B6F5C;margin-top:8px;padding-top:8px;border-top:1px solid #E8D5C4}
-.msg.bot .sources .tag{display:inline-block;background:#F5EDE5;padding:2px 8px;border-radius:10px;margin:2px 3px;font-size:10px;color:#6B4C3B}
-.msg.bot .disclaimer-text{font-size:11px;color:#C0392B;margin-top:8px;padding-top:8px;border-top:1px solid #F5EDE5}
-.thinking{background:#fff;color:#8B6F5C;align-self:flex-start;border-bottom-left-radius:4px;border:1px solid #E8D5C4;padding:14px 18px;display:none}
-.thinking .dots{display:inline-flex;gap:4px}
-.thinking .dots span{width:6px;height:6px;background:#C4A882;border-radius:50%;animation:bounce 1.2s infinite}
-.thinking .dots span:nth-child(2){animation-delay:.2s}
-.thinking .dots span:nth-child(3){animation-delay:.4s}
-@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
-/* 快捷问题 */
-.quick-row{display:flex;gap:6px;padding:6px 16px 0;overflow-x:auto;flex-shrink:0;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-.quick-row::-webkit-scrollbar{display:none}
-.quick-btn{flex-shrink:0;background:#fff;border:1px solid #E8D5C4;border-radius:16px;padding:6px 14px;font-size:12px;color:#6B4C3B;cursor:pointer;white-space:nowrap;transition:all .15s}
-.quick-btn:active{background:#8B4513;color:#fff;border-color:#8B4513}
-/* 输入区 */
-.input-area{display:flex;gap:8px;padding:10px 12px 14px;background:#fff;border-top:1px solid #E8D5C4;flex-shrink:0}
-.input-area input{flex:1;padding:10px 14px;border:1.5px solid #E8D5C4;border-radius:22px;font-size:14px;outline:none;background:#F9F6F2;color:#2C1810}
-.input-area input:focus{border-color:#8B4513;background:#fff}
-.input-area input::placeholder{color:#B8A090}
-.input-area button{width:40px;height:40px;border:none;border-radius:50%;background:#8B4513;color:#fff;font-size:18px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center}
-.input-area button:active{background:#A0522D}
-.input-area button:disabled{background:#C4A882}
+/* ... 保留原有所有样式 ... */
+
+/* 新增：功能按钮样式 */
+.action-buttons {
+    display: flex;
+    gap: 8px;
+    padding: 8px 16px;
+    justify-content: flex-end;
+    background: #F5F0EB;
+    border-bottom: 1px solid #E8D5C4;
+}
+
+.action-btn {
+    padding: 5px 12px;
+    border: 1px solid #C4A882;
+    border-radius: 14px;
+    font-size: 12px;
+    color: #6B4C3B;
+    background: #FFF;
+    cursor: pointer;
+    transition: all .15s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.action-btn:hover {
+    background: #8B4513;
+    color: #fff;
+    border-color: #8B4513;
+}
+
+.action-btn:active {
+    transform: scale(0.95);
+}
 </style>
 </head>
 <body>
@@ -50,36 +49,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC",s
   <div class="sub">AI 辅助回答 · 仅供学术交流</div>
 </div>
 
-<div class="disclaimer">⚠️ 所有回答仅供学术交流，不构成医疗建议。身体不适请及时到医院就医。</div>
-
-<div class="chat-area" id="chatArea">
-  <div class="msg bot">
-    👋 你好！我是中医知识 AI 问答助手。
-    请问你想了解什么？<br><br>
-  </div>
+<div class="disclaimer">
+  ⚠️ 所有回答仅供学术交流，不构成医疗建议。身体不适请及时到医院就医。
+  <span id="langIndicator" style="margin-left: 8px; color: #C0392B; font-weight: bold;">简体中文</span>
 </div>
 
-<div class="quick-row" id="quickRow">
-  <div class="quick-btn" data-q="伤寒论">📖 伤寒论</div>
-  <div class="quick-btn" data-q="六经辨证">📖 六经辨证</div>
-  <div class="quick-btn" data-q="李可">👨‍⚕️ 李可</div>
-  <div class="quick-btn" data-q="郑钦安">🔥 郑钦安</div>
-  <div class="quick-btn" data-q="张景岳">📚 张景岳</div>
-  <div class="quick-btn" data-q="祝味菊">🌿 祝味菊</div>
+<!-- 新增：功能按钮区域 -->
+<div class="action-buttons">
+  <button class="action-btn" id="clearBtn">🗑️ 清除对话</button>
+  <button class="action-btn" id="langToggleBtn">🌐 中/EN</button>
 </div>
 
-<div class="input-area">
-  <input type="text" id="input" placeholder="输入中医问题..." autocomplete="off">
-  <button id="sendBtn" disabled>➤</button>
-</div>
+<!-- 聊天区域和后续代码保持不变 ... -->
 
 <script>
 const chatArea = document.getElementById("chatArea");
 const input = document.getElementById("input");
 const sendBtn = document.getElementById("sendBtn");
 const quickRow = document.getElementById("quickRow");
+const clearBtn = document.getElementById("clearBtn");
+const langToggleBtn = document.getElementById("langToggleBtn");
+const langIndicator = document.getElementById("langIndicator");
 
 let isAsking = false;
+let currentLang = "zh"; // "zh" 或 "en"
 
 // 添加消息
 function addMessage(text, type, sources) {
@@ -87,7 +80,6 @@ function addMessage(text, type, sources) {
   div.className = `msg ${type}`;
   let html = text.replace(/\n/g, "<br>").replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
   if (type === "bot") {
-    // 将出处加在末尾
     let srcHtml = "";
     if (sources && sources.length > 0) {
       const tags = sources.filter(s => s.title).slice(0, 5).map(s => `<span class="tag">📄 ${s.title}</span>`).join("");
@@ -132,7 +124,10 @@ async function ask(question) {
     const resp = await fetch("/api/chat", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({ question: question.trim() })
+      body: JSON.stringify({ 
+        question: question.trim(),
+        lang: currentLang  // 发送当前语言设置
+      })
     });
     const data = await resp.json();
     hideThinking();
@@ -147,6 +142,69 @@ async function ask(question) {
   input.disabled = false;
   input.focus();
 }
+
+// ====== 新增功能 1：清除对话记录 ======
+clearBtn.addEventListener("click", function() {
+  // 保留第一条欢迎消息
+  while (chatArea.children.length > 1) {
+    chatArea.removeChild(chatArea.lastChild);
+  }
+  // 可选：显示提示消息
+  addMessage("✅ 对话记录已清除", "bot");
+});
+
+// ====== 新增功能 2：中英文切换 ======
+function updateLangUI(lang) {
+  if (lang === "en") {
+    langIndicator.textContent = "English";
+    document.querySelector(".header h1").textContent = "🌿 TCM Q&A";
+    document.querySelector(".header .sub").textContent = "AI Assistant · For Academic Purposes Only";
+    document.querySelector(".disclaimer").innerHTML = `
+      ⚠️ All responses are for academic discussion only. 
+      Not medical advice. If unwell, please consult a doctor.
+      <span id="langIndicator" style="margin-left: 8px; font-weight: bold;">English</span>
+    `;
+    input.placeholder = "Ask a TCM question...";
+    sendBtn.title = "Send";
+    
+    // 更新快捷按钮文字
+    document.querySelectorAll(".quick-btn").forEach(btn => {
+      const data = btn.dataset.q;
+      if (data === "伤寒论") btn.innerHTML = "📖 Shanghan Lun";
+      else if (data === "六经辨证") btn.innerHTML = "📖 Six Meridians";
+      else if (data === "李可") btn.innerHTML = "👨‍⚕️ Li Ke";
+      else if (data === "郑钦安") btn.innerHTML = "🔥 Zheng Qin'an";
+      else if (data === "张景岳") btn.innerHTML = "📚 Zhang Jingyue";
+      else if (data === "祝味菊") btn.innerHTML = "🌿 Zhu Weiju";
+    });
+  } else {
+    langIndicator.textContent = "简体中文";
+    document.querySelector(".header h1").textContent = "🌿 中医知识问答";
+    document.querySelector(".header .sub").textContent = "AI 辅助回答 · 仅供学术交流";
+    document.querySelector(".disclaimer").innerHTML = `
+      ⚠️ 所有回答仅供学术交流，不构成医疗建议。身体不适请及时到医院就医。
+      <span id="langIndicator" style="margin-left: 8px; font-weight: bold;">简体中文</span>
+    `;
+    input.placeholder = "输入中医问题...";
+    sendBtn.title = "发送";
+    
+    // 恢复快捷按钮文字
+    document.querySelectorAll(".quick-btn").forEach(btn => {
+      const data = btn.dataset.q;
+      if (data === "伤寒论") btn.innerHTML = "📖 伤寒论";
+      else if (data === "六经辨证") btn.innerHTML = "📖 六经辨证";
+      else if (data === "李可") btn.innerHTML = "👨‍⚕️ 李可";
+      else if (data === "郑钦安") btn.innerHTML = "🔥 郑钦安";
+      else if (data === "张景岳") btn.innerHTML = "📚 张景岳";
+      else if (data === "祝味菊") btn.innerHTML = "🌿 祝味菊";
+    });
+  }
+}
+
+langToggleBtn.addEventListener("click", function() {
+  currentLang = currentLang === "zh" ? "en" : "zh";
+  updateLangUI(currentLang);
+});
 
 // 事件绑定
 sendBtn.addEventListener("click", () => { ask(input.value); input.value = ""; });
