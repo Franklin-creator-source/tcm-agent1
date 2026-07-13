@@ -12,10 +12,10 @@ app = Flask(__name__)
 CORS(app)
 
 # ── 配置 ──────────────────────────────────
-IMA_CLIENT_ID = os.environ.get("IMA_OPENAPI_CLIENTID", "")
-IMA_API_KEY = os.environ.get("IMA_OPENAPI_APIKEY", "")
+IMA_CLIENT_ID = os.environ.get("IMA_OPENAPI_CLIENTID", "d39da832a3285437af00a1dbc6d11581")
+IMA_API_KEY = os.environ.get("IMA_OPENAPI_APIKEY", "Ta0Z2ZslUrB3ICRrBWFeh6GworUMQwxxQjxxTVqKieKKRZh1BLI72cFoyBYyDHdV618o6oz2AA==")
 KB_ID = os.environ.get("KB_ID", "SV1LP_ohoX7Fq_Up6P1ssrCAuEKyoyL2hQCqunxxrFk=")
-DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "sk-1421314d63634de08de8b11ea27d95ec")
 IMA_BASE_URL = "https://ima.qq.com"
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
