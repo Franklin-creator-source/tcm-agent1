@@ -4,9 +4,10 @@
 """
 import json
 import os
+from pathlib import Path
+from http.server import HTTPServer, BaseHTTPRequestHandler
+from urllib.parse import urlparse, parse_qs
 import urllib.request
-from flask import Flask, request, jsonify, send_file
-from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)
