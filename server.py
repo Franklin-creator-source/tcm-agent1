@@ -10,8 +10,8 @@ from urllib.parse import urlparse, parse_qs
 import urllib.request
 
 # ── 配置（从环境变量读取，部署时在云平台设置）──────────────
-IMA_CLIENT_ID = os.environ.get("IMA_OPENAPI_CLIENTID", "")
-IMA_API_KEY = os.environ.get("IMA_OPENAPI_APIKEY", "")
+IMA_CLIENT_ID = os.environ.get("IMA_OPENAPI_CLIENTID", "d39da832a3285437af00a1dbc6d11581")
+IMA_API_KEY = os.environ.get("IMA_OPENAPI_APIKEY", "Ta0Z2ZslUrB3ICRrBWFeh6GworUMQwxxQjxxTVqKieKKRZh1BLI72cFoyBYyDHdV618o6oz2AA==")
 KB_ID = os.environ.get("KB_ID", "SV1LP_ohoX7Fq_Up6P1ssrCAuEKyoyL2hQCqunxxrFk=")
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "sk-1421314d63634de08de8b11ea27d95ec")
 PORT = int(os.environ.get("PORT", "8088"))
