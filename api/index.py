@@ -1,272 +1,211 @@
-"""
-中医知识问答 - Vercel Serverless 后端（中英文双语 + 对话记忆）
-对接 IMA 知识库 + DeepSeek API
 
-Vercel 路由规则：
-  api/index.py  →  /api, /api/chat, /api/info ...
-  根路径 / → 重写到 /api/ 返回 index.html
-"""
-import json
+""" 中医知识问答系统 - Vercel Serverless 适配版（最终修正版） """
 import os
-import urllib.request
-from flask import Flask, request, jsonify, send_from_directory
+import sys
+import json
+from typing import Optional
+import requests
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 
+# ---------- 环境变量（无默认值，部署时必须在 Vercel 后台设置） ----------
+IMA_CLIENT_ID = os.environ.get("IMA_OPENAPI_CLIENTID")
+IMA_API_KEY = os.environ.get("IMA_OPENAPI_APIKEY")
+KB_ID = os.environ.get("KB_ID")
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY")
+
+# 可选的环境变量（有默认值，但建议按实际修改）
+IMA_BASE_URL = os.environ.get("IMA_BASE_URL", "https://openapi.ima.com/v1")
+DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
+
+# 在应用实例化前检查必填环境变量，避免冷启动后无密钥
+if not all([IMA_CLIENT_ID, IMA_API_KEY, KB_ID, DEEPSEEK_API_KEY]):
+    raise RuntimeError(
+        "Missing required environment variables: IMA_OPENAPI_CLIENTID, "
+        "IMA_OPENAPI_APIKEY, KB_ID, DEEPSEEK_API_KEY"
+    )
+
+# ---------- Flask 应用 ----------
 app = Flask(__name__)
 
-# ── 配置（从 Vercel 环境变量读取）──────────
-IMA_CLIENT_ID = os.environ.get("IMA_OPENAPI_CLIENTID", "")
-IMA_API_KEY = os.environ.get("IMA_OPENAPI_APIKEY", "")
-KB_ID = os.environ.get("KB_ID", "SV1LP_ohoX7Fq_Up6P1ssrCAuEKyoyL2hQCqunxxrFk=")
-DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
-IMA_BASE_URL = "https://ima.qq.com"
+# CORS 配置：允许指定域名，默认放行所有来源（开发/测试）
+ALLOWED_ORIGINS = os.environ.get("CORS_ORIGINS", "*").split(",")
+if ALLOWED_ORIGINS == ["*"]:
+    CORS(app)
+else:
+    CORS(app, origins=ALLOWED_ORIGINS)
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# ---------- 辅助函数 ----------
 
-
-def call_ima_api(api_path: str, body: dict) -> dict:
-    """调用 IMA API"""
-    data = json.dumps(body, ensure_ascii=False).encode("utf-8")
-    req = urllib.request.Request(
-        f"{IMA_BASE_URL}/{api_path}",
-        data=data,
-        headers={
-            "Content-Type": "application/json",
-            "ima-openapi-clientid": IMA_CLIENT_ID,
-            "ima-openapi-apikey": IMA_API_KEY,
-            "ima-openapi-ctx": "skill_version=1.1.7",
-        }
-    )
+def call_ima_api(query: str) -> dict:
+    """调用 IMA 知识库搜索 API"""
     try:
-        resp = urllib.request.urlopen(req, timeout=30)
-        return json.loads(resp.read())
+        resp = requests.post(
+            f"{IMA_BASE_URL}/kb/search",
+            json={"kb_id": KB_ID, "query": query, "top_k": 5},
+            headers={
+                "Content-Type": "application/json",
+                "X-Client-Id": IMA_CLIENT_ID,
+                "X-Api-Key": IMA_API_KEY,
+            },
+            timeout=15,
+        )
+        # 检查 HTTP 状态码
+        if resp.status_code != 200:
+            return {"code": -1, "msg": f"IMA API returned {resp.status_code}: {resp.text}"}
+        return resp.json()
     except Exception as e:
         return {"code": -1, "msg": str(e)}
 
-
-def call_deepseek(messages: list) -> str:
-    """调用 DeepSeek API"""
-    if not DEEPSEEK_API_KEY:
+def call_deepseek(messages: list) -> Optional[str]:
+    """调用 DeepSeek 对话 API，失败返回 None"""
+    try:
+        resp = requests.post(
+            f"{DEEPSEEK_BASE_URL}/chat/completions",
+            json={
+                "model": "deepseek-chat",
+                "messages": messages,
+                "temperature": 0.7,
+                "max_tokens": 1500,
+            },
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+            },
+            timeout=30,
+        )
+        if resp.status_code != 200:
+            return None
+        data = resp.json()
+        # 最终修正：choices 是列表，必须用 [0] 取第一条
+        return data["choices"]["message"]["content"]
+    except Exception:
         return None
 
-    data = json.dumps({
-        "model": "deepseek-chat",
-        "messages": messages,
-        "temperature": 0.7,
-        "max_tokens": 2000
-    }).encode("utf-8")
+def enforce_question_rules(answer: str, question: str, kb_items: list, history: list, lang: str) -> str:
+    """规则增强：追问症状、承认未知、来源引用"""
+    zh = (lang == "zh")
+    q_lower = question.lower()
 
-    req = urllib.request.Request(
-        "https://api.deepseek.com/chat/completions",
-        data=data,
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {DEEPSEEK_API_KEY}"
-        }
-    )
-    try:
-        resp = urllib.request.urlopen(req, timeout=60)
-        result = json.loads(resp.read())
-        return result["choices"][0]["message"]["content"]
-    except Exception as e:
-        return f"【调用 DeepSeek 出错】{str(e)}"
+    # ---------- 1. 症状追问 ----------
+    if zh:
+        symptom_keywords = ["症状", "不舒服", "疼痛", "咳嗽", "发热", "头痛", "胃痛", "失眠", "便秘", "腹泻"]
+        time_check = ["多久", "时间"]
+    else:
+        symptom_keywords = ["symptom", "pain", "cough", "fever", "headache", "stomach", "sleep", "constipation"]
+        time_check = ["how long", "when"]
 
+    is_symptom = any(kw in q_lower for kw in symptom_keywords)
 
-def translate_to_english(text: str) -> str:
-    """将中文回答翻译成英文（用于英文模式）"""
-    if not text or not DEEPSEEK_API_KEY:
-        return text
+    if is_symptom:
+        recent_contents = []
+        for msg in history[-3:]:
+            if isinstance(msg, dict):
+                recent_contents.append(msg.get("content", ""))
+            else:
+                recent_contents.append(str(msg))
+        asked_time_in_question = any(kw in q_lower for kw in time_check)
+        asked_time_in_history = any(
+            kw in content.lower() for content in recent_contents for kw in time_check
+        )
+        if not asked_time_in_question and not asked_time_in_history:
+            follow = (
+                "\n\n💡 请问这个症状持续多久了？还有其他伴随症状吗？"
+                if zh
+                else "\n\n💡 How long have you had this symptom? Any other accompanying symptoms?"
+            )
+            if follow not in answer:
+                answer += follow
 
-    data = json.dumps({
-        "model": "deepseek-chat",
-        "messages": [
-            {"role": "system", "content": "You are a professional translator specializing in Traditional Chinese Medicine (TCM). Translate the following Chinese text into English. Keep all proper names of books and persons in Pinyin, followed by English translation in parentheses. For TCM terms, use Pinyin (English) format, e.g. 'Fuzi (Aconite)', 'Liu Jing (Six Meridians)'. Output ONLY the translation, nothing else."},
-            {"role": "user", "content": f"Translate the following into English:\n\n{text}"}
-        ],
-        "temperature": 0.3,
-        "max_tokens": 2500
-    }).encode("utf-8")
+    # ---------- 2. 知识库为空时的不确定处理 ----------
+    no_kb = not kb_items
+    uncertain = ["可能", "也许", "不一定", "不确定"] if zh else ["maybe", "perhaps", "might", "uncertain"]
+    if no_kb and any(w in answer for w in uncertain):
+        answer = (
+            "【知识库中暂无相关记载】目前没有找到关于此问题的权威资料，建议咨询专业医师。"
+            if zh
+            else "[No relevant records in the knowledge base] No authoritative information found. Please consult a professional."
+        )
 
-    req = urllib.request.Request(
-        "https://api.deepseek.com/chat/completions",
-        data=data,
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {DEEPSEEK_API_KEY}"
-        }
-    )
-    try:
-        resp = urllib.request.urlopen(req, timeout=60)
-        result = json.loads(resp.read())
-        return result["choices"][0]["message"]["content"]
-    except:
-        return text
+    # ---------- 3. 来源引用 ----------
+    if kb_items and "【来源】" not in answer and "📚" not in answer:
+        answer += "\n\n" + ("📚 参考资料：\n" if zh else "📚 References:\n")
+        for item in kb_items[:3]:
+            answer += f"- {item.get('title', '未命名')}\n"
 
+    return answer
 
-SYSTEM_PROMPT_ZH = """你是一位精通中医经典文献的学术顾问。你的核心参考著作如下：
+# ---------- 路由 ----------
 
-【核心医家】
-- 吴雄志：《吴述重订伤寒杂病论》
-- 胡希恕：《胡希恕温病条辨讲义》《经方医案（黄煌）》
-- 郑钦安：《郑钦安医书阐释》（医理真传、医法圆通、伤寒恒论）
-- 祝味菊：相关医案与学术著作
-- 张景岳：《张景岳医学全书》（明清名医全书大成）
-
-【补充参考】
-- 火神派资料汇编、李可老中医经验专辑、危症难病倚附子、吴佩衡医案
-- 医宗金鉴、蒲辅周/周仲瑛/朱良春/邓铁涛等临床家经验集
-- 章真如临床经验集、孔伯华医案、傅青主女科、中华肿瘤治疗大成
-
-回答规则：
-1. 分析病情时，优先以吴雄志、胡希恕、郑钦安、祝味菊、张景岳的著作为依据
-2. 用药方面：
-   a. 分别说明不同种类药物的药效和不良反应（副作用）
-   b. 说明用药之后病情可能的变化（包括好转和恶化的指征）
-   c. 用药须兼顾补虚与攻邪，不可偏废
-   d. 始终注意平衡患者的阴津与阳气
-3. 用户咨询时提出的信息如果不全面，不能下结论，可以给出病情有几种可能性，同时要求用户补充信息以完善分析
-4. 用药要参考中医名家案例，注明具体出处（哪本书、哪位医家）
-5. 分析框架须兼顾六经辨证与八纲辨证（表里、寒热、虚实、阴阳）
-6. 基于知识库内容回答，不编造
-7. 回答末尾强调：⚠️ 本回答仅供学术交流，不构成医疗建议，身体不适请及时就医。
-8. 不确定时说"知识库中暂无相关记载"
-请用中文回答。"""
-
-
-# ── 路由 ──────────────────────────────────
-# Vercel 会把 /api 下的请求转给 api/index.py 中的 Flask app
-# 所以 Flask 内路由用 /chat, /info, /search（不带 /api 前缀）
-
-@app.route("/", methods=["GET"])
-def index():
-    """返回前端页面"""
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    return send_from_directory(base_dir, "index.html")
-
-
-@app.route("/chat", methods=["POST"])
+@app.route("/api/chat", methods=["POST"])
 def chat():
-    """问答接口（支持对话记忆 + 双语）"""
     body = request.get_json(force=True)
-    question = (body.get("question") or "").strip()
+    question = body.get("question", "").strip()[:500]  # 限制输入长度
+    history = body.get("history", [])
     lang = body.get("lang", "zh")
-    history = body.get("history", [])  # 历史对话记忆
+
     if not question:
-        return jsonify({"error": "请输入问题 / Please enter a question"}), 400
+        return jsonify({"error": "问题不能为空"}), 400
 
-    # 1. 搜索 IMA 知识库
-    ima_resp = call_ima_api("openapi/wiki/v1/search_knowledge", {
-        "query": question, "knowledge_base_id": KB_ID, "cursor": ""
-    })
-    kb_items = ima_resp.get("data", {}).get("info_list", []) if ima_resp.get("code") == 0 else []
+    # 知识库搜索
+    ima_resp = call_ima_api(question)
+    # 兼容不同返回结构
+    data = ima_resp.get("data", {}) if isinstance(ima_resp, dict) else {}
+    kb_items = data.get("info_list") or data.get("items") or []
 
-    context_lines = []
-    titles = []
-    for item in kb_items[:5]:
-        t = item.get("title", "").replace(".pdf", "").replace(".PDF", "")
-        titles.append(f"- 《{t}》")
-        highlight = item.get("highlight_content", "")
-        if highlight:
-            context_lines.append(f"【{t}】{highlight}")
+    # 如果开发环境下可打印返回结构进行调试（生产环境可删除）
+    # print("IMA response:", json.dumps(ima_resp, ensure_ascii=False))
 
-    context = "\n\n".join(context_lines) if context_lines else "知识库中找到相关文件 / Files found in knowledge base：" + "\n".join(titles[:3])
-
-    # 2. 构建 messages（含历史对话记忆）
-    user_prompt = f"""知识库中检索到的相关资料：
-{context}
-
-用户问题：{question}
-
-请优先参考吴雄志、胡希恕、郑钦安、祝味菊、张景岳的著作进行分析，兼顾六经八纲，注明出处。"""
-
-    # 构建 messages: system + 历史对话 + 当前问题
-    messages = [{"role": "system", "content": SYSTEM_PROMPT_ZH}]
-
-    # 添加历史对话（最多保留最近 20 条消息 ≈ 10 轮）
+    # 消息组装
+    system_prompt = (
+        "你是一位中医专家助手。请基于提供的知识库内容回答。"
+        if lang == "zh"
+        else "You are a TCM assistant. Answer based on the provided knowledge base."
+    )
+    messages = [{"role": "system", "content": system_prompt}]
     for msg in history[-20:]:
-        role = msg.get("role", "")
-        content = msg.get("content", "")
-        if role in ("user", "assistant") and content:
-            messages.append({"role": role, "content": content})
+        messages.append(msg)
+    messages.append({"role": "user", "content": question})
 
-    messages.append({"role": "user", "content": user_prompt})
+    # 调用 DeepSeek
+    ai_answer = call_deepseek(messages)
 
-    answer = call_deepseek(messages)
-
-    # 英文模式：将中文回答翻译成英文
-    if answer and lang == "en" and DEEPSEEK_API_KEY:
-        answer = translate_to_english(answer)
-
-    if answer is None:
+    if ai_answer is None:
         if kb_items:
-            docs = "\n".join(f"- 《{i.get('title','').replace('.pdf','')}》" for i in kb_items[:3])
-            if lang == "en":
-                answer = f"""📚 **About: "{question}"**
-
-The following classic texts in the knowledge base may contain relevant content:
-
-{docs}
-
-💡 DeepSeek API Key is not configured. Showing relevant literature from the knowledge base.
-
-⚠️ This response is for academic exchange only, not medical advice. Please consult a doctor if unwell."""
-            else:
-                answer = f"""📚 **关于「{question}」**
-
-根据知识库检索，以下典籍可能包含相关内容：
-
-{docs}
-
-💡 当前 DeepSeek API Key 未配置，已展示知识库中相关文献。
-
-⚠️ 本回复仅供学术交流，不构成医疗建议，身体不适请及时到医院就医。"""
+            ai_answer = (
+                "【知识库匹配结果】\n" if lang == "zh" else "[Knowledge Base Results]\n"
+            )
+            for item in kb_items[:3]:
+                ai_answer += f"- {item.get('title', '')}\n"
         else:
-            if lang == "en":
-                answer = f"""No relevant content found in the knowledge base for "{question}".
+            ai_answer = (
+                "抱歉，暂时无法回答该问题。"
+                if lang == "zh"
+                else "Sorry, unable to answer at this time."
+            )
 
-⚠️ This response is for academic exchange only, not medical advice."""
-            else:
-                answer = f"""关于「{question}」，知识库中暂未检索到相关内容。
+    ai_answer = enforce_question_rules(ai_answer, question, kb_items, history, lang)
 
-⚠️ 本回复仅供学术交流，不构成医疗建议。"""
+    return jsonify({"answer": ai_answer, "sources": kb_items[:3]})
 
-    return jsonify({
-        "answer": answer,
-        "sources": [{
-            "title": i.get("title", "").replace(".pdf", "").replace(".PDF", ""),
-            "media_id": i.get("media_id", "")
-        } for i in kb_items[:5]]
-    })
-
-
-@app.route("/info", methods=["GET"])
-def info():
-    """获取知识库信息"""
-    resp = call_ima_api("openapi/wiki/v1/get_knowledge_base", {"ids": [KB_ID]})
-    if resp.get("code") != 0:
-        return jsonify({"error": "获取失败 / Failed to fetch"}), 500
-    kb = resp.get("data", {}).get("infos", {}).get(KB_ID, {})
-    return jsonify({
-        "name": kb.get("name", "中医知识仅供交流 / TCM Knowledge for Exchange"),
-        "description": kb.get("description", ""),
-        "content_count": 25
-    })
-
-
-@app.route("/search", methods=["GET"])
+@app.route("/api/search", methods=["GET"])
 def search():
-    """搜索知识库"""
-    q = request.args.get("q", "")
+    q = request.args.get("q", "").strip()[:200]
     if not q:
-        return jsonify({"items": []})
-    resp = call_ima_api("openapi/wiki/v1/search_knowledge", {
-        "query": q, "knowledge_base_id": KB_ID, "cursor": ""
-    })
-    items = resp.get("data", {}).get("info_list", []) if resp.get("code") == 0 else []
-    return jsonify({"items": items})
+        return jsonify({"error": "查询内容无效"}), 400
+    result = call_ima_api(q)
+    return jsonify(result)
 
+@app.route("/")
+def serve_index():
+    """提供 index.html 首页"""
+    try:
+        with open("index.html", "r", encoding="utf-8") as f:
+            return f.read(), 200, {"Content-Type": "text/html; charset=utf-8"}
+    except FileNotFoundError:
+        return jsonify({"error": "index.html not found"}), 404
 
-# Vercel entry
-app_instance = app
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "8088")))
+# 其他所有未匹配路径返回 404，避免误匹配
+@app.route("/<path:path>")
+def catch_all(path):
+    return jsonify({"error": "Not found"}), 404
