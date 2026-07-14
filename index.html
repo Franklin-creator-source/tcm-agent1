@@ -1,511 +1,195 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-<title>中医知识问答</title>
-<style>
-/* ============ 全局重置 ============ */
-*{margin:0;padding:0;box-sizing:border-box}
-body{
-  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC",sans-serif;
-  background:#F5F0EB;
-  color:#2C1810;
-  height:100vh;
-  display:flex;
-  flex-direction:column;
-}
-
-/* ============ 顶部栏 ============ */
-.header{
-  background:linear-gradient(135deg,#8B4513,#A0522D);
-  color:#fff;
-  padding:16px 16px 12px;
-  text-align:center;
-  flex-shrink:0;
-}
-.header h1{font-size:18px;font-weight:700;letter-spacing:1px}
-.header .sub{font-size:12px;opacity:.8;margin-top:3px}
-
-/* ============ 功能按钮栏 ============ */
-.action-buttons{
-  display:flex;
-  gap:8px;
-  padding:6px 16px;
-  background:#F5F0EB;
-  flex-shrink:0;
-}
-.action-btn{
-  padding:5px 12px;
-  border:1px solid #C4A882;
-  border-radius:14px;
-  font-size:11px;
-  color:#6B4C3B;
-  background:#FFF;
-  cursor:pointer;
-  transition:all .15s;
-  display:flex;
-  align-items:center;
-  gap:4px;
-}
-.action-btn:hover{background:#8B4513;color:#fff;border-color:#8B4513}
-.action-btn:active{transform:scale(0.95)}
-
-/* ============ 免责声明 ============ */
-.disclaimer{
-  background:#FFF3E0;
-  border-left:3px solid #C0392B;
-  margin:0 12px;
-  padding:6px 12px;
-  border-radius:6px;
-  font-size:11px;
-  color:#8D3A2A;
-  line-height:1.5;
-  flex-shrink:0;
-}
-#langIndicator{font-weight:bold;margin-left:6px;color:#C0392B}
-
-/* ============ 聊天区域 ============ */
-.chat-area{
-  flex:1;
-  overflow-y:auto;
-  padding:12px 16px;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-  -webkit-overflow-scrolling:touch;
-}
-.msg{
-  max-width:88%;
-  padding:12px 14px;
-  border-radius:14px;
-  font-size:14px;
-  line-height:1.7;
-  word-break:break-word;
-  animation:fadeIn .25s;
-}
-@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.msg.user{
-  background:#8B4513;
-  color:#fff;
-  align-self:flex-end;
-  border-bottom-right-radius:4px;
-}
-.msg.bot{
-  background:#fff;
-  color:#2C1810;
-  align-self:flex-start;
-  border-bottom-left-radius:4px;
-  border:1px solid #E8D5C4;
-}
-.msg.bot .sources{
-  font-size:11px;
-  color:#8B6F5C;
-  margin-top:8px;
-  padding-top:8px;
-  border-top:1px solid #E8D5C4;
-}
-.msg.bot .sources .tag{
-  display:inline-block;
-  background:#F5EDE5;
-  padding:2px 8px;
-  border-radius:10px;
-  margin:2px 3px;
-  font-size:10px;
-  color:#6B4C3B;
-}
-.msg.bot .disclaimer-text{
-  font-size:11px;
-  color:#C0392B;
-  margin-top:8px;
-  padding-top:8px;
-  border-top:1px solid #F5EDE5;
-}
-
-.thinking{
-  background:#fff;
-  color:#8B6F5C;
-  align-self:flex-start;
-  border-bottom-left-radius:4px;
-  border:1px solid #E8D5C4;
-  padding:14px 18px;
-}
-.thinking .dots{display:inline-flex;gap:4px}
-.thinking .dots span{
-  width:6px;height:6px;background:#C4A882;
-  border-radius:50%;animation:bounce 1.2s infinite;
-}
-.thinking .dots span:nth-child(2){animation-delay:.2s}
-.thinking .dots span:nth-child(3){animation-delay:.4s}
-@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
-
-/* ============ 快捷问题 ============ */
-.quick-row{
-  display:flex;
-  gap:6px;
-  padding:6px 16px 0;
-  overflow-x:auto;
-  flex-shrink:0;
-  -webkit-overflow-scrolling:touch;
-  scrollbar-width:none;
-}
-.quick-row::-webkit-scrollbar{display:none}
-.quick-btn{
-  flex-shrink:0;
-  background:#fff;
-  border:1px solid #E8D5C4;
-  border-radius:16px;
-  padding:6px 14px;
-  font-size:12px;
-  color:#6B4C3B;
-  cursor:pointer;
-  white-space:nowrap;
-  transition:all .15s;
-}
-.quick-btn:active{background:#8B4513;color:#fff;border-color:#8B4513}
-
-/* ============ 输入区 ============ */
-.input-area{
-  display:flex;
-  gap:8px;
-  padding:10px 12px 14px;
-  background:#fff;
-  border-top:1px solid #E8D5C4;
-  flex-shrink:0;
-}
-.input-area input{
-  flex:1;
-  padding:10px 14px;
-  border:1.5px solid #E8D5C4;
-  border-radius:22px;
-  font-size:14px;
-  outline:none;
-  background:#F9F6F2;
-  color:#2C1810;
-}
-.input-area input:focus{border-color:#8B4513;background:#fff}
-.input-area input::placeholder{color:#B8A090}
-.input-area button{
-  width:40px;height:40px;
-  border:none;border-radius:50%;
-  background:#8B4513;color:#fff;
-  font-size:18px;cursor:pointer;
-  flex-shrink:0;
-  display:flex;align-items:center;justify-content:center;
-}
-.input-area button:active{background:#A0522D}
-.input-area button:disabled{background:#C4A882}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中医知识问答</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; height: 100vh; display: flex; flex-direction: column; }
+        #header { background: #2c3e50; color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
+        #header h1 { font-size: 20px; }
+        #controls { display: flex; gap: 10px; }
+        #controls button { padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        #langToggleBtn { background: #3498db; color: white; }
+        #clearBtn { background: #e74c3c; color: white; }
+        #chat { flex: 1; overflow-y: auto; padding: 20px; background: #ecf0f1; }
+        .msg { margin-bottom: 16px; padding: 12px 16px; border-radius: 12px; max-width: 80%; word-wrap: break-word; line-height: 1.6; }
+        .user { background: #3498db; color: white; align-self: flex-end; margin-left: auto; }
+        .bot { background: white; color: #333; border: 1px solid #ddd; }
+        .msg .sources { margin-top: 8px; font-size: 13px; color: #7f8c8d; }
+        .msg .disclaimer { margin-top: 10px; font-size: 12px; color: #bdc3c7; border-top: 1px solid #eee; padding-top: 6px; }
+        #inputArea { display: flex; gap: 10px; padding: 16px 24px; background: white; border-top: 1px solid #ddd; }
+        #inputArea input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; outline: none; }
+        #inputArea button { padding: 12px 24px; background: #2c3e50; color: white; border: none; border-radius: 8px; font-size: 15px; cursor: pointer; }
+        #inputArea button:disabled { background: #95a5a6; cursor: not-allowed; }
+        #loading { display: none; text-align: center; color: #7f8c8d; padding: 10px; }
+    </style>
 </head>
 <body>
+    <div id="header">
+        <h1 id="title">🧧 中医知识问答</h1>
+        <div id="controls">
+            <button id="langToggleBtn">English</button>
+            <button id="clearBtn">清空对话</button>
+        </div>
+    </div>
+    <div id="chat"></div>
+    <div id="loading">思考中...</div>
+    <div id="inputArea">
+        <input id="questionInput" type="text" placeholder="请输入您的中医问题..." autofocus />
+        <button id="sendBtn">发送</button>
+    </div>
 
-<!-- ===== 顶部 ===== -->
-<div class="header">
-  <h1 id="pageTitle">🌿 中医知识问答</h1>
-  <div class="sub" id="pageSubtitle">AI 辅助回答 · 仅供学术交流</div>
-</div>
+    <script>
+        // ---------- 状态 ----------
+        let conversationHistory = [];
+        let currentLang = "zh";
+        const chatDiv = document.getElementById("chat");
+        const loadingDiv = document.getElementById("loading");
+        const input = document.getElementById("questionInput");
+        const sendBtn = document.getElementById("sendBtn");
+        const langToggleBtn = document.getElementById("langToggleBtn");
+        const clearBtn = document.getElementById("clearBtn");
 
-<!-- ===== 功能按钮 ===== -->
-<div class="action-buttons">
-  <button class="action-btn" id="clearBtn">🗑️ <span class="btnText">清除对话</span></button>
-  <button class="action-btn" id="langToggleBtn">🌐 <span class="btnText">中文/EN</span></button>
-</div>
+        // ---------- 工具函数 ----------
+        function escapeHtml(str) {
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/\"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
 
-<!-- ===== 免责声明 ===== -->
-<div class="disclaimer" id="disclaimerText">
-  ⚠️ 所有回答仅供学术交流，不构成医疗建议。身体不适请及时到医院就医。
-  <span id="langIndicator">简体中文</span>
-</div>
+        function saveHistory() {
+            try {
+                localStorage.setItem("conversationHistory", JSON.stringify(conversationHistory));
+            } catch(e) {}
+        }
 
-<!-- ===== 聊天区域 ===== -->
-<div class="chat-area" id="chatArea">
-  <div class="msg bot" id="welcomeMsg">
-    👋 你好！我是中医知识 AI 问答助手。请问你想了解什么？<br><br>
-  </div>
-</div>
+        function loadHistory() {
+            try {
+                const saved = localStorage.getItem("conversationHistory");
+                if (saved) {
+                    conversationHistory = JSON.parse(saved);
+                    conversationHistory.forEach(msg => {
+                        addMessage(msg.content, msg.role, msg.sources || []);
+                    });
+                }
+            } catch(e) {}
+        }
 
-<!-- ===== 快捷问题 ===== -->
-<div class="quick-row" id="quickRow">
-  <div class="quick-btn" data-q="伤寒论">📖 伤寒论</div>
-  <div class="quick-btn" data-q="六经辨证">📖 六经辨证</div>
-  <div class="quick-btn" data-q="李可">👨‍⚕️ 李可</div>
-  <div class="quick-btn" data-q="郑钦安">🔥 郑钦安</div>
-  <div class="quick-btn" data-q="张景岳">📚 张景岳</div>
-  <div class="quick-btn" data-q="祝味菊">🌿 祝味菊</div>
-</div>
+        // ---------- 添加消息到界面（最终修正：先转义，后处理 Markdown） ----------
+        function addMessage(text, type, sources = []) {
+            const div = document.createElement("div");
+            div.className = `msg ${type}`;
 
-<!-- ===== 输入区 ===== -->
-<div class="input-area">
-  <input type="text" id="input" placeholder="输入中医问题..." autocomplete="off">
-  <button id="sendBtn" disabled>➤</button>
-</div>
+            // ① 先转义 HTML，防止 XSS
+            let safeText = escapeHtml(text);
+            // ② 再处理 Markdown 语法（加粗）
+            safeText = safeText.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+            // ③ 处理换行
+            safeText = safeText.replace(/\n/g, "<br />");
+            div.innerHTML = safeText;
 
-<script>
-// ============================================================
-// 核心状态变量
-// ============================================================
-const chatArea = document.getElementById("chatArea");
-const input = document.getElementById("input");
-const sendBtn = document.getElementById("sendBtn");
-const quickRow = document.getElementById("quickRow");
-const clearBtn = document.getElementById("clearBtn");
-const langToggleBtn = document.getElementById("langToggleBtn");
-const langIndicator = document.getElementById("langIndicator");
+            if (sources && sources.length > 0) {
+                const srcDiv = document.createElement("div");
+                srcDiv.className = "sources";
+                srcDiv.innerHTML = (currentLang === "zh" ? "📚 来源：" : "📚 Sources: ") +
+                    sources.map(s => escapeHtml(s.title || "未知")).join("、");
+                div.appendChild(srcDiv);
+            }
 
-let isAsking = false;
-let currentLang = "zh";               // "zh" 或 "en"
-let conversationHistory = [];         // 存储对话历史 {role, content}
+            const disclaimers = [
+                "本回答仅供学术交流，不构成医疗建议",
+                "This response is for academic exchange only and does not constitute medical advice"
+            ];
+            const hasDisclaimer = disclaimers.some(d => text.includes(d));
+            if (!hasDisclaimer && type === "bot") {
+                const discDiv = document.createElement("div");
+                discDiv.className = "disclaimer";
+                discDiv.textContent = currentLang === "zh"
+                    ? "⚠️ 本回答仅供学术交流，不构成医疗建议。如有不适，请及时就医。"
+                    : "⚠️ This response is for academic exchange only. Consult a doctor if you feel unwell.";
+                div.appendChild(discDiv);
+            }
 
-// ============================================================
-// 多语言词库（基于 key-value 对象实现中英文切换）
-// ============================================================
-const langPack = {
-  zh: {
-    title: "🌿 中医知识问答",
-    subtitle: "AI 辅助回答 · 仅供学术交流",
-    disclaimer: '⚠️ 所有回答仅供学术交流，不构成医疗建议。身体不适请及时到医院就医。<span id="langIndicator">简体中文</span>',
-    inputPlaceholder: "输入中医问题...",
-    clearBtnText: "清除对话",
-    langBtnText: "中文/EN",
-    langLabel: "简体中文",
-    welcomeText: '👋 你好！我是中医知识 AI 问答助手。请问你想了解什么？<br><br>',
-    warningText: '⚠️ 本回复仅供学术交流，不构成医疗建议，身体不适请及时就医。',
-    networkError: '网络错误，请稍后重试',
-    clearSuccess: '✅ 对话记录已清除',
-    thinking: 'AI 思考中',
-    sourcesLabel: '相关文献',
-    quickBtns: [
-      { q: "伤寒论", label: "📖 伤寒论" },
-      { q: "六经辨证", label: "📖 六经辨证" },
-      { q: "李可", label: "👨‍⚕️ 李可" },
-      { q: "郑钦安", label: "🔥 郑钦安" },
-      { q: "张景岳", label: "📚 张景岳" },
-      { q: "祝味菊", label: "🌿 祝味菊" }
-    ]
-  },
-  en: {
-    title: "🌿 TCM Q&A",
-    subtitle: "AI Assistant · For Academic Purposes Only",
-    disclaimer: '⚠️ All responses are for academic discussion only. Not medical advice. If unwell, please consult a doctor.<span id="langIndicator">English</span>',
-    inputPlaceholder: "Ask a TCM question...",
-    clearBtnText: "Clear Chat",
-    langBtnText: "EN/中文",
-    langLabel: "English",
-    welcomeText: '👋 Hello! I am a TCM AI Q&A assistant. What would you like to know?<br><br>',
-    warningText: '⚠️ This response is for academic exchange only and does not constitute medical advice. Please consult a doctor if unwell.',
-    networkError: 'Network error, please try again later',
-    clearSuccess: '✅ Chat history cleared',
-    thinking: 'AI thinking',
-    sourcesLabel: 'Sources',
-    quickBtns: [
-      { q: "伤寒论", label: "📖 Shanghan Lun" },
-      { q: "六经辨证", label: "📖 Six Meridians" },
-      { q: "李可", label: "👨‍⚕️ Li Ke" },
-      { q: "郑钦安", label: "🔥 Zheng Qin'an" },
-      { q: "张景岳", label: "📚 Zhang Jingyue" },
-      { q: "祝味菊", label: "🌿 Zhu Weiju" }
-    ]
-  }
-};
+            chatDiv.appendChild(div);
+            chatDiv.scrollTop = chatDiv.scrollHeight;
+        }
 
-// ============================================================
-// UI 更新函数：切换语言时刷新所有界面文字
-// ============================================================
-function updateLangUI(lang) {
-  const pack = langPack[lang];
+        // ---------- 发送请求（带防重复提交） ----------
+        async function ask() {
+            if (sendBtn.disabled) return; // 已在请求中
+            const question = input.value.trim();
+            if (!question) return;
 
-  // 更新标题和副标题
-  document.getElementById("pageTitle").textContent = pack.title;
-  document.getElementById("pageSubtitle").textContent = pack.subtitle;
+            addMessage(question, "user");
+            conversationHistory.push({ role: "user", content: question });
+            saveHistory();
 
-  // 更新免责声明
-  document.getElementById("disclaimerText").innerHTML = pack.disclaimer;
+            input.value = "";
+            loadingDiv.style.display = "block";
+            sendBtn.disabled = true;
 
-  // 更新输入框占位符
-  input.placeholder = pack.inputPlaceholder;
+            try {
+                const resp = await fetch("/api/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        question: question,
+                        history: conversationHistory.map(m => ({ role: m.role, content: m.content })),
+                        lang: currentLang
+                    })
+                });
+                const data = await resp.json();
+                const answer = data.answer || "（没有获得回答）";
+                const sources = data.sources || [];
 
-  // 更新按钮文字
-  const btnTexts = document.querySelectorAll(".btnText");
-  btnTexts[0].textContent = pack.clearBtnText;
-  btnTexts[1].textContent = pack.langBtnText;
+                addMessage(answer, "bot", sources);
+                conversationHistory.push({ role: "assistant", content: answer, sources: sources });
+                saveHistory();
+            } catch (err) {
+                addMessage("网络错误，请稍后重试。", "bot");
+            } finally {
+                loadingDiv.style.display = "none";
+                sendBtn.disabled = false;
+                input.focus();
+            }
+        }
 
-  // 更新语言指示器
-  document.getElementById("langIndicator").textContent = pack.langLabel;
+        // ---------- 语言切换 ----------
+        function toggleLang() {
+            currentLang = (currentLang === "zh") ? "en" : "zh";
+            const isZh = currentLang === "zh";
+            document.getElementById("title").textContent = isZh ? "🧧 中医知识问答" : "🧧 TCM Q&A";
+            langToggleBtn.textContent = isZh ? "English" : "中文";
+            input.placeholder = isZh ? "请输入您的中医问题..." : "Ask a TCM question...";
+            clearBtn.textContent = isZh ? "清空对话" : "Clear";
+            loadingDiv.textContent = isZh ? "思考中..." : "Thinking...";
+        }
 
-  // 更新快捷按钮
-  const btns = document.querySelectorAll(".quick-btn");
-  pack.quickBtns.forEach((item, i) => {
-    if (btns[i]) btns[i].innerHTML = item.label;
-  });
+        // ---------- 清空对话 ----------
+        function clearChat() {
+            chatDiv.innerHTML = "";
+            conversationHistory = [];
+            localStorage.removeItem("conversationHistory");
+            input.value = "";
+            input.focus();
+        }
 
-  // 更新欢迎消息
-  const welcome = document.getElementById("welcomeMsg");
-  if (welcome) welcome.innerHTML = pack.welcomeText;
-}
+        // ---------- 事件绑定 ----------
+        sendBtn.addEventListener("click", ask);
+        input.addEventListener("keydown", (e) => { if (e.key === "Enter") ask(); });
+        langToggleBtn.addEventListener("click", toggleLang);
+        clearBtn.addEventListener("click", clearChat);
 
-// ============================================================
-// 添加消息到聊天区域[13](@ref)
-// ============================================================
-function addMessage(text, type, sources) {
-  const pack = langPack[currentLang];
-  const div = document.createElement("div");
-  div.className = `msg ${type}`;
-
-  // 处理 Markdown 粗体
-  let html = text
-    .replace(/\n/g, "<br>")
-    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-
-  if (type === "bot") {
-    // 添加知识库来源标签
-    let srcHtml = "";
-    if (sources && sources.length > 0) {
-      const tags = sources
-        .filter(s => s.title)
-        .slice(0, 5)
-        .map(s => `<span class="tag">📄 ${s.title}</span>`)
-        .join("");
-      if (tags) {
-        srcHtml = `<div class="sources">${pack.sourcesLabel}：${tags}</div>`;
-      }
-    }
-    html += srcHtml;
-
-    // 自动添加免责声明（如果模型未输出）
-    if (!text.includes("⚠️")) {
-      html += `<div class="disclaimer-text">${pack.warningText}</div>`;
-    }
-  }
-
-  div.innerHTML = html;
-  chatArea.appendChild(div);
-  chatArea.scrollTop = chatArea.scrollHeight;
-
-  // 保存到对话历史（用于后续请求携带）
-  conversationHistory.push({
-    role: type === "user" ? "user" : "assistant",
-    content: text
-  });
-}
-
-// ============================================================
-// "思考中"动画
-// ============================================================
-function showThinking() {
-  const pack = langPack[currentLang];
-  const d = document.createElement("div");
-  d.className = "thinking";
-  d.id = "thinkingMsg";
-  d.innerHTML = `<span style="font-size:13px">${pack.thinking}</span> <span class="dots"><span></span><span></span><span></span></span>`;
-  chatArea.appendChild(d);
-  chatArea.scrollTop = chatArea.scrollHeight;
-}
-
-function hideThinking() {
-  const t = document.getElementById("thinkingMsg");
-  if (t) t.remove();
-}
-
-// ============================================================
-// 发送问题到后端 API
-// ============================================================
-async function ask(question) {
-  if (!question.trim() || isAsking) return;
-  isAsking = true;
-  sendBtn.disabled = true;
-  input.disabled = true;
-
-  // 显示用户消息
-  addMessage(question, "user");
-  showThinking();
-
-  try {
-    const resp = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        question: question.trim(),
-        history: conversationHistory.slice(-20),  // 携带最近20条历史
-        lang: currentLang                         // 携带当前语言设置
-      })
-    });
-    const data = await resp.json();
-    hideThinking();
-    addMessage(
-      data.answer || data.error || (currentLang === 'zh' ? '暂无回答' : 'No answer'),
-      "bot",
-      data.sources || []
-    );
-  } catch (e) {
-    hideThinking();
-    const pack = langPack[currentLang];
-    addMessage(pack.networkError, "bot");
-  }
-
-  isAsking = false;
-  sendBtn.disabled = false;
-  input.disabled = false;
-  input.focus();
-}
-
-// ============================================================
-// 清除对话功能[12](@ref)
-// ============================================================
-clearBtn.addEventListener("click", function() {
-  // 二次确认
-  const pack = langPack[currentLang];
-  if (!confirm(pack.clearBtnText + "？")) return;
-
-  // 保留第一条欢迎消息，删除其余所有消息[12](@ref)
-  while (chatArea.children.length > 1) {
-    chatArea.removeChild(chatArea.lastChild);
-  }
-
-  // 清空对话历史
-  conversationHistory = [];
-
-  // 显示清除成功的提示
-  addMessage(pack.clearSuccess, "bot");
-});
-
-// ============================================================
-// 中英文切换功能
-// ============================================================
-langToggleBtn.addEventListener("click", function() {
-  currentLang = currentLang === "zh" ? "en" : "zh";
-  updateLangUI(currentLang);
-
-  // 将用户选择持久化存储到 localStorage
-  localStorage.setItem("preferredLang", currentLang);
-});
-
-// ============================================================
-// 事件绑定
-// ============================================================
-sendBtn.addEventListener("click", () => { ask(input.value); input.value = ""; });
-input.addEventListener("keydown", e => {
-  if (e.key === "Enter") { ask(input.value); input.value = ""; }
-});
-input.addEventListener("input", () => {
-  sendBtn.disabled = !input.value.trim() || isAsking;
-});
-
-// 快捷按钮点击触发提问
-quickRow.addEventListener("click", e => {
-  const btn = e.target.closest(".quick-btn");
-  if (btn) ask(btn.dataset.q);
-});
-
-// ============================================================
-// 页面初始化：读取 localStorage 中的语言偏好
-// ============================================================
-(function init() {
-  const savedLang = localStorage.getItem("preferredLang");
-  if (savedLang === "en") {
-    currentLang = "en";
-    updateLangUI("en");
-  }
-})();
-</script>
+        // ---------- 初始化 ----------
+        window.addEventListener("load", () => {
+            loadHistory();
+            input.focus();
+        });
+    </script>
 </body>
 </html>
